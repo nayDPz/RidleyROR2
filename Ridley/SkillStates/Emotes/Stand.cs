@@ -11,13 +11,13 @@ namespace Ridley.SkillStates.Emotes
             this.animDuration = 1f;
             this.duration = float.PositiveInfinity;
             this.normalizeModel = false;
-            this.cameraTargetParams.aimMode = CameraTargetParams.AimType.Aura;
+            this.cameraTargetParams.RequestAimType(CameraTargetParams.AimType.Aura);
             base.OnEnter();
             
         }
         public override void OnExit()
         {
-            this.cameraTargetParams.aimMode = CameraTargetParams.AimType.Standard;
+            this.cameraTargetParams.RequestAimType(CameraTargetParams.AimType.Standard);
             Util.PlaySound("EmoteStandEnd", base.gameObject);
             this.GetModelAnimator().SetBool("endStand", true);
             base.OnExit();

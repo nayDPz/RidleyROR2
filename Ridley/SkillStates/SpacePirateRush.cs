@@ -10,11 +10,11 @@ using UnityEngine.Networking;
 
 namespace Ridley.SkillStates
 {
-	public class SpacePirateRush : BaseSkillState
+	public class SpacePirateRush : RidleyBaseState
 	{
 		private float finalAirTime;
 		private Vector3 lastSafeFootPosition;
-		private float airTimeDamageCoefficient = 2.5f;
+		private float airTimeDamageCoefficient = 4f;
 		private GameObject fireEffect;
 		private GameObject dragEffect;
 		private float minDropTime = 0.35f;
@@ -25,10 +25,7 @@ namespace Ridley.SkillStates
 		private float grabDuration = 0.4f;
 		private Vector3 targetMoveVector;
 		private Vector3 targetMoveVectorVelocity;
-		private float velocityDamageCoefficient = 0.7f;
-		private float wallDamageCoefficient = 9f;
-		private float wallBlastRadius = 12f;
-		private Vector3 wallHitPoint;
+
 		public static float upForce = 2000f;
 		public static float launchForce = 1750f;
 		public static float turnSmoothTime = 0.01f;
@@ -40,17 +37,15 @@ namespace Ridley.SkillStates
 		private float dragStopwatch;
 		private float dragDuration = 2f;
 		private float dragMaxSpeedTime = 0.8f;
-		private Transform sphereCheckTransform;
 		private float maxAirTime = 0.67f;
-		private float airStopwatch;
 		private float smallHopVelocity = 12f;
 		private float windupDuration = 0.3f;
 		private float exitDuration = 0.5f;
 		protected GameObject swingEffectPrefab;
 		protected GameObject hitEffectPrefab;
 		protected NetworkSoundEventIndex impactSound;
-		private float groundSlamDamageCoefficient = 2.9f;
-		private float chargeDamageCoefficient = 2.2f;
+		private float groundSlamDamageCoefficient = 2.5f;
+		private float chargeDamageCoefficient = 3f;
 		private float chargeImpactForce = 2000f;
 		private Vector3 bonusForce = Vector3.up * 2000f;
 		private Vector3 aimDirection;
@@ -60,13 +55,13 @@ namespace Ridley.SkillStates
 		private bool hasGrabbed;
 		private OverlapAttack attack;
 		private float grabRadius = 8f;
-		private float groundSlamRadius = 4f;
-		private bool playedGrabSound = false;
+		private float groundSlamRadius = 2.75f;
 		private SpacePirateRush.SubState subState;
 		public static float dodgeFOV = DodgeState.dodgeFOV;
 		private bool sound;
 		private uint soundID;
 		private bool s;
+		private bool releaseEnemies;
 
 		private enum SubState
 		{
@@ -75,10 +70,10 @@ namespace Ridley.SkillStates
 			MissedGrab,
 			AirGrabbed,
 			Dragging,
-			GrabWall,
 			DragLaunch,
 			Exit
 		}
+
 		public override void OnEnter()
 		{
 			base.OnEnter();
@@ -91,7 +86,7 @@ namespace Ridley.SkillStates
 			//this.fireEffect = UnityEngine.Object.Instantiate<GameObject>(Modules.Assets.grabFireEffect, base.FindModelChild("HandL2"));
 			base.PlayAnimation("FullBody, Override", "SSpecStart", "Slash.playbackRate", this.grabDuration);
 			Util.PlaySound("GrabEnter", base.gameObject);
-			if (base.characterBody) base.characterBody.bodyFlags |= CharacterBody.BodyFlags.IgnoreFallDamage;
+			if (base.characterBody && NetworkServer.active) base.characterBody.bodyFlags |= CharacterBody.BodyFlags.IgnoreFallDamage;
 			Transform modelTransform = base.GetModelTransform();
 			HitBoxGroup hitBoxGroup = null;
 			if (modelTransform)
@@ -110,7 +105,7 @@ namespace Ridley.SkillStates
 			this.attack.pushAwayForce = this.chargeImpactForce;
 			this.attack.hitBoxGroup = hitBoxGroup;
 			this.attack.isCrit = base.RollCrit();
-			this.attack.impactSound = this.impactSound;
+			this.attack.impactSound = Modules.Assets.jab2HitSoundEvent.index;
 			this.dashSpeedCurve = new AnimationCurve(new Keyframe[]
 			{
 				new Keyframe(0f, 14f),
@@ -176,48 +171,98 @@ namespace Ridley.SkillStates
 				{
 					if (this.subState == SpacePirateRush.SubState.AirGrabbed)
 					{
-						if ((base.isGrounded || base.inputBank.jump.justPressed) && this.stopwatch >= this.minDropTime)
+						if(base.inputBank.jump.justPressed && this.stopwatch >= this.minDropTime * 2f)
+                        {
+							/*
+							foreach (GrabController grabController in this.grabController)
+							{
+								if (grabController)
+								{
+									grabController.Launch(base.characterMotor.moveDirection.normalized * SpacePirateRush.launchForce + Vector3.up * SpacePirateRush.upForce);
+									base.modelLocator.normalizeToFloor = true;
+								}
+							}*/
+							if (base.isAuthority)
+							{
+								this.outer.SetNextState(new DragLaunch
+								{
+									grabController = this.grabController,
+									exitSpeed = 0f,
+									lastSafeFootPosition = base.transform.position
+								});
+							}
+							return;
+							/*
+							this.subState = SubState.DragLaunch;
+							if (this.dragEffect)
+							{
+								EntityState.Destroy(this.dragEffect);
+							}
+							AkSoundEngine.StopPlayingID(this.soundID);
+							Util.PlaySound("DragLaunch", base.gameObject);
+							Util.PlaySound("DragLaunchVoice", base.gameObject);
+							this.lastSafeFootPosition = base.characterBody.footPosition;
+							base.PlayAnimation("FullBody, Override", "DragEnd", "Slash.playbackRate", this.grabDuration);
+							foreach (GrabController grabController in this.grabController)
+							{
+								if (grabController)
+								{
+									grabController.Launch(base.characterMotor.moveDirection.normalized * SpacePirateRush.launchForce + Vector3.up * SpacePirateRush.upForce);
+									base.modelLocator.normalizeToFloor = true;
+								}
+							}
+							this.stopwatch = 0f;
+							*/
+						}
+
+						if (base.isGrounded && this.stopwatch >= this.minDropTime)
 						{
 							this.targetMoveVector = Vector3.zero;
 							this.dragEffect = UnityEngine.Object.Instantiate<GameObject>(Modules.Assets.groundDragEffect, base.FindModelChild("HandL").position, Util.QuaternionSafeLookRotation(Vector3.up));
 							//this.dragEffect.transform.parent = base.FindModelChild("HandL");
 							this.finalAirTime = (this.stopwatch / this.maxAirTime);
-							float c = (finalAirTime + 1) * this.airTimeDamageCoefficient;
-							float attackRecoil = this.attackRecoil;
-							base.AddRecoil(-1f * attackRecoil, -2f * attackRecoil, -0.5f * attackRecoil, 0.5f * attackRecoil);
-							EffectManager.SpawnEffect(Resources.Load<GameObject>("prefabs/effects/impacteffects/beetleguardgroundslam"), new EffectData
-							{
-								origin = base.transform.position,
-								scale = this.groundSlamRadius * c,
-							}, true);
+							if(Util.HasEffectiveAuthority(base.gameObject))
+                            {
+								//Util.PlaySound("GrabHitGround", base.gameObject);
+								float c = (finalAirTime + 1) * this.airTimeDamageCoefficient;
+								float attackRecoil = this.attackRecoil;
+								base.AddRecoil(-1f * attackRecoil, -2f * attackRecoil, -0.5f * attackRecoil, 0.5f * attackRecoil);
+								EffectManager.SpawnEffect(Resources.Load<GameObject>("prefabs/effects/impacteffects/beetleguardgroundslam"), new EffectData
+								{
+									origin = base.transform.position,
+									scale = this.groundSlamRadius * c,
+									networkSoundEventIndex = Modules.Assets.grabGroundSoundEvent.index
+								}, true);
+
+								BlastAttack.Result result = new BlastAttack
+								{
+									attacker = base.gameObject,
+									procChainMask = default(ProcChainMask),
+									impactEffect = EffectIndex.Invalid,
+									losType = BlastAttack.LoSType.NearestHit,
+									damageColorIndex = DamageColorIndex.Default,
+									damageType = DamageType.Stun1s,
+									procCoefficient = 1f,
+									bonusForce = SpacePirateRush.upForce * Vector3.up,
+									baseForce = SpacePirateRush.launchForce,
+									baseDamage = c * this.groundSlamDamageCoefficient * this.damageStat,
+									falloffModel = BlastAttack.FalloffModel.SweetSpot,
+									radius = this.groundSlamRadius * c,
+									position = base.FindModelChild("HandL").position,
+									attackerFiltering = AttackerFiltering.NeverHitSelf,
+									teamIndex = base.GetTeam(),
+									inflictor = base.gameObject,
+									crit = base.RollCrit()
+								}.Fire();
+							}
 							
-							BlastAttack.Result result = new BlastAttack
-							{
-								attacker = base.gameObject,
-								procChainMask = default(ProcChainMask),
-								impactEffect = EffectIndex.Invalid,
-								losType = BlastAttack.LoSType.NearestHit,
-								damageColorIndex = DamageColorIndex.Default,
-								damageType = DamageType.Stun1s,
-								procCoefficient = 1f,
-								bonusForce = SpacePirateRush.upForce * Vector3.up,
-								baseForce = SpacePirateRush.launchForce,
-								baseDamage = c * this.groundSlamDamageCoefficient * this.damageStat,
-								falloffModel = BlastAttack.FalloffModel.SweetSpot,
-								radius = this.groundSlamRadius * c,
-								position = base.FindModelChild("HandL").position,
-								attackerFiltering = AttackerFiltering.NeverHit,
-								teamIndex = base.GetTeam(),
-								inflictor = base.gameObject,
-								crit = base.RollCrit()
-							}.Fire();
 							base.modelLocator.normalizeToFloor = true;
 							this.subState = SpacePirateRush.SubState.Dragging;
 							this.stopwatch = 0f;
 
 							base.PlayAnimation("FullBody, Override", "SSpecGrab", "Slash.playbackRate", this.grabDuration);
 							this.sound = true;
-							Util.PlaySound("GrabHitGround", base.gameObject);
+							
 							this.soundID = Util.PlaySound("DragLoop", base.gameObject);
 							this.animator.SetBool("dragGround", true);
 						}
@@ -246,17 +291,20 @@ namespace Ridley.SkillStates
 								this.sound = false;
 								return;
 							}
+
 							RaycastHit raycastHit = default(RaycastHit);
 							Vector3 position = base.FindModelChild("HandL").position;
 							position.y += 1f;
 							Debug.DrawRay(position, Vector3.down);
+
 							if(this.dragEffect)
                             {
 								if (Physics.Raycast(new Ray(position, Vector3.down), out raycastHit, 4f, LayerIndex.world.mask, QueryTriggerInteraction.Collide))
 									this.dragEffect.transform.position = raycastHit.point;
 								else
 									this.dragEffect.transform.position = raycastHit.point = base.FindModelChild("HandL").position;
-							}							
+							}				
+							
 							this.dragStopwatch += Time.fixedDeltaTime;						
 							
 							this.dragDamageStopwatch += Time.fixedDeltaTime;
@@ -271,6 +319,7 @@ namespace Ridley.SkillStates
 							Vector3 forward = base.characterDirection.forward;
 							base.characterMotor.moveDirection = forward * d2;
 							List<HurtBox> list = new List<HurtBox>();
+
 							foreach(GrabController controller in this.grabController)
                             {
 								if(controller.body)
@@ -284,36 +333,17 @@ namespace Ridley.SkillStates
 								
                             }
 
-							if (this.attack.Fire(list))
-							{
-								foreach (HurtBox hurtBox in list)
+							if(base.isAuthority)
+                            {
+								if (this.attack.Fire(list))
 								{
-									if ((hurtBox.healthComponent && hurtBox.healthComponent.body && hurtBox.healthComponent.body.isChampion) || hurtBox.healthComponent.body.isBoss)
-									{
-										if (this.dragEffect)
-										{
-											EntityState.Destroy(this.dragEffect);
-										}
-										this.subState = SpacePirateRush.SubState.GrabWall;
-										this.stopwatch = 0f;
-										return;
-									}
+
 								}
 							}
-
-							if (this.dragStopwatch >= this.dragDuration || base.inputBank.jump.justPressed)
+							
+							if (this.dragStopwatch >= this.dragDuration || (base.inputBank.jump.justPressed))
 							{
-								if (this.dragEffect)
-								{
-									EntityState.Destroy(this.dragEffect);
-								}
-								this.exitSpeed = d2;
-								this.subState = SpacePirateRush.SubState.DragLaunch;
-								AkSoundEngine.StopPlayingID(this.soundID);
-								Util.PlaySound("DragLaunch", base.gameObject);
-								Util.PlaySound("DragLaunchVoice", base.gameObject);
-								this.lastSafeFootPosition = base.characterBody.footPosition;
-								base.PlayAnimation("FullBody, Override", "DragEnd", "Slash.playbackRate", this.grabDuration);
+								/*
 								foreach (GrabController grabController in this.grabController)
 								{
 									if (grabController)
@@ -322,64 +352,32 @@ namespace Ridley.SkillStates
 										base.modelLocator.normalizeToFloor = true;
 									}
 								}
-								this.stopwatch = 0f;
+								*/
+								if(base.isAuthority)
+                                {
+									this.outer.SetNextState(new DragLaunch
+									{
+										grabController = this.grabController,
+										exitSpeed = d2,
+										lastSafeFootPosition = this.lastSafeFootPosition
+									});
+								}
+								return;
+								
 							}
 						}
 						else
 						{
-							if (this.subState == SpacePirateRush.SubState.GrabWall)
-							{
-								float f = Mathf.Max(this.velocityDamageCoefficient * base.characterMotor.velocity.magnitude, (finalAirTime + 1) * this.airTimeDamageCoefficient);
-								float bonusDamage = f * this.damageStat;
-								base.characterMotor.moveDirection = Vector3.zero;
-								Util.PlaySound("JabHit3", base.gameObject);
-								AkSoundEngine.StopPlayingID(this.soundID);
-								base.AddRecoil(-1f * this.attackRecoil, -2f * this.attackRecoil, -0.5f * this.attackRecoil, 0.5f * this.attackRecoil);
-								base.PlayAnimation("FullBody, Override", "DragWall", "Slash.playbackRate", this.grabDuration);
-								EffectManager.SpawnEffect(GlobalEventManager.CommonAssets.igniteOnKillExplosionEffectPrefab, new EffectData
-								{
-									origin = base.transform.position,
-									scale = this.wallBlastRadius
-								}, true);
-								new BlastAttack
-								{
-									attacker = base.gameObject,
-									procChainMask = default(ProcChainMask),
-									impactEffect = EffectIndex.Invalid,
-									losType = BlastAttack.LoSType.NearestHit,
-									damageColorIndex = DamageColorIndex.Default,
-									damageType = DamageType.Stun1s,
-									procCoefficient = 1f,
-									bonusForce = SpacePirateRush.upForce * Vector3.up,
-									baseForce = SpacePirateRush.launchForce,
-									baseDamage = this.wallDamageCoefficient * this.damageStat + bonusDamage,
-									falloffModel = BlastAttack.FalloffModel.None,
-									radius = this.wallBlastRadius,
-									position = base.FindModelChild("HandL").position,
-									attackerFiltering = AttackerFiltering.NeverHit,
-									teamIndex = base.GetTeam(),
-									inflictor = base.gameObject,
-									crit = base.RollCrit()
-								}.Fire();
-								this.subState = SpacePirateRush.SubState.Exit;
-							}
-							else
-							{
-								if (this.subState == SubState.DragLaunch)
-									base.characterMotor.moveDirection = base.characterDirection.forward * this.exitSpeed * Mathf.Lerp(1f, 0f, this.stopwatch / this.exitDuration);
-								else
-                                {
-									base.characterMotor.velocity = Vector3.zero;
-									base.characterMotor.moveDirection = Vector3.zero;
-								}
-								base.characterMotor.velocity = Vector3.zero; ////////delet
-								base.characterMotor.moveDirection = Vector3.zero;
+							
+							this.releaseEnemies = true;
+							base.characterMotor.velocity = Vector3.zero; ////////delet
+							base.characterMotor.moveDirection = Vector3.zero;
 
-								if (this.stopwatch >= this.exitDuration)
-								{
-									this.outer.SetNextStateToMain();
-								}
+							if (this.stopwatch >= this.exitDuration)
+							{
+								this.outer.SetNextStateToMain();
 							}
+							
 						}
 					}
 				}
@@ -406,7 +404,7 @@ namespace Ridley.SkillStates
 						procChainMask = default(ProcChainMask),
 						procCoefficient = 0f
 					};
-					if (grabController.body && grabController.body.healthComponent)
+					if (grabController.body && grabController.body.healthComponent && NetworkServer.active)// Util.HasEffectiveAuthority(grabController.body.gameObject))
 					{
 						grabController.body.healthComponent.TakeDamage(damageInfo);
 						this.ForceFlinch(grabController.body);
@@ -422,6 +420,8 @@ namespace Ridley.SkillStates
 			{
 				EntityState.Destroy(this.dragEffect);
 			}
+			AkSoundEngine.StopPlayingID(this.soundID);
+
 			if (this.fireEffect) EntityState.Destroy(this.fireEffect);
 
 			RaycastHit raycastHit;
@@ -436,14 +436,29 @@ namespace Ridley.SkillStates
 			}
 			if (this.grabController.Count > 0)
 			{
-				foreach (GrabController grabController in this.grabController)
-				{
-					if (grabController)
+				if(this.releaseEnemies)
+                {
+					
+					foreach (GrabController grabController in this.grabController)
 					{
-						grabController.Release();
+						if (grabController)
+						{
+							grabController.Release();
+						}
 					}
 				}
+				else
+                {
+					foreach (GrabController grabController in this.grabController)
+					{
+						if (grabController)
+						{
+							grabController.Launch(base.characterMotor.moveDirection.normalized * SpacePirateRush.launchForce + Vector3.up * SpacePirateRush.upForce);
+						}
+					}
+				}			
 			}
+
 			if (NetworkServer.active)
 			{
 				base.characterBody.bodyFlags &= ~CharacterBody.BodyFlags.IgnoreFallDamage;
@@ -451,25 +466,29 @@ namespace Ridley.SkillStates
 		}
 		protected virtual void ForceFlinch(CharacterBody body)
 		{
-			SetStateOnHurt component = body.healthComponent.GetComponent<SetStateOnHurt>();
-			if (component)
-			{
-				if (component.canBeHitStunned)
+			if(Util.HasEffectiveAuthority(body.gameObject))
+            {
+				SetStateOnHurt component = body.healthComponent.GetComponent<SetStateOnHurt>();
+				if (component)
 				{
-					component.SetPain();
-				}
-				else if(component.canBeStunned)
-                {
-					component.SetStun(1f);					
-                }
-				foreach (EntityStateMachine e in body.gameObject.GetComponents<EntityStateMachine>())
-				{
-					if (e && e.customName.Equals("Weapon"))
+					if (component.canBeHitStunned)
 					{
-						e.SetNextStateToMain();
+						component.SetPain();
+					}
+					else if (component.canBeStunned)
+					{
+						component.SetStun(1f);
+					}
+					foreach (EntityStateMachine e in body.gameObject.GetComponents<EntityStateMachine>())
+					{
+						if (e && e.customName.Equals("Weapon"))
+						{
+							e.SetNextStateToMain();
+						}
 					}
 				}
 			}
+			
 		}
 		public void AttemptGrab(float grabRadius)
 		{
@@ -495,11 +514,6 @@ namespace Ridley.SkillStates
 					{
 						if (!hurtBox.healthComponent.body.isChampion || (hurtBox.healthComponent.gameObject.name.Contains("Brother") && hurtBox.healthComponent.gameObject.name.Contains("Body")))
 						{
-							if (this.playedGrabSound)
-							{
-								Util.PlaySound("HenrySwordSwing", base.gameObject);
-								this.playedGrabSound = true;
-							}
 							Vector3 between = hurtBox.healthComponent.transform.position - base.transform.position;
 							Vector3 v = between / 4f;
 							v.y = Math.Max(v.y, between.y);

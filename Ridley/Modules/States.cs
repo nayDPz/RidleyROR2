@@ -1,6 +1,6 @@
 ﻿using R2API;
 using Ridley.SkillStates;
-using Ridley.SkillStates.BaseStates;
+using Ridley.SkillStates.Emotes;
 using System;
 using MonoMod.RuntimeDetour;
 using EntityStates;
@@ -20,6 +20,11 @@ namespace Ridley.Modules
         private delegate void set_stateTypeDelegate(ref SerializableEntityStateType self, Type value);
         private delegate void set_typeNameDelegate(ref SerializableEntityStateType self, String value);
 
+        internal static void AddSkill(Type t)
+        {
+            entityStates.Add(t);
+        }
+
         internal static void RegisterStates()
         {
             Type type = typeof(SerializableEntityStateType);
@@ -28,7 +33,34 @@ namespace Ridley.Modules
             set_stateTypeHook = new Hook(type.GetMethod("set_stateType", allFlags), new set_stateTypeDelegate(SetStateTypeHook), cfg);
             set_typeNameHook = new Hook(type.GetMethod("set_typeName", allFlags), new set_typeNameDelegate(SetTypeName), cfg);
 
+            AddSkill(typeof(RidleyMain));
+            
+            AddSkill(typeof(ChargeFireballs));
+            AddSkill(typeof(FireFireballs));
 
+            AddSkill(typeof(SpacePirateRush));
+            AddSkill(typeof(DragLaunch));
+
+            AddSkill(typeof(Skewer));
+            AddSkill(typeof(Skewer2));
+            AddSkill(typeof(PullEnemies));
+            AddSkill(typeof(SkeweredState));
+
+            AddSkill(typeof(BaseM1));
+            AddSkill(typeof(M1Entry));
+            AddSkill(typeof(Jab1));
+            AddSkill(typeof(Jab2));
+            AddSkill(typeof(Jab3));
+            AddSkill(typeof(DashAttack));
+            AddSkill(typeof(DownTilt));
+            AddSkill(typeof(FAir));
+            AddSkill(typeof(NAir));
+            AddSkill(typeof(UpAir));
+
+            AddSkill(typeof(BaseEmote));
+            AddSkill(typeof(Emote1));
+            AddSkill(typeof(Emote2));
+            AddSkill(typeof(Stand));
         }
 
         private static void SetStateTypeHook(ref this SerializableEntityStateType self, Type value)

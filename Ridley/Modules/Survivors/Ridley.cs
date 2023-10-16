@@ -18,8 +18,8 @@ namespace Ridley.Modules.Survivors
 			{
 				Ridley.characterPrefab = Prefabs.CreatePrefab("RidleyBody", "mdlRidley", new BodyInfo
 				{
-					armor = 15f,
-					armorGrowth = 1.5f,
+					armor = 8f,
+					armorGrowth = 1f,
 					bodyName = "RidleyBody",
 					bodyNameToken = "NDP_RIDLEY_BODY_NAME",
 					bodyColor = Color.grey,
@@ -36,6 +36,11 @@ namespace Ridley.Modules.Survivors
 					subtitleNameToken = "NDP_RIDLEY_BODY_SUBTITLE",
 					podPrefab = Resources.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod"),
 				});
+				Ridley.characterPrefab.AddComponent<RidleyComponent>();
+				EntityStateMachine mowf = Ridley.characterPrefab.AddComponent<EntityStateMachine>();
+				mowf.customName = "Mouth";
+				mowf.mainStateType = new SerializableEntityStateType(typeof(Idle));
+				mowf.initialStateType = new SerializableEntityStateType(typeof(Idle));
 				Ridley.characterPrefab.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponent<FootstepHandler>().baseFootstepString = "Play_acrid_step_sprint";
 				Ridley.characterPrefab.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponent<FootstepHandler>().footstepDustPrefab = Resources.Load<GameObject>("Prefabs/GenericLargeFootstepDust");
 				Ridley.characterPrefab.GetComponent<SfxLocator>().fallDamageSound = "RidleyLandFallDamage";
@@ -76,7 +81,7 @@ namespace Ridley.Modules.Survivors
 					}
 				}, Ridley.bodyRendererIndex);
 				Ridley.displayPrefab = Prefabs.CreateDisplayPrefab("mdlRidley", Ridley.characterPrefab);
-				Prefabs.RegisterNewSurvivor(Ridley.characterPrefab, Ridley.displayPrefab, Color.grey, "RIDLEY", Ridley.characterUnlockableDef);
+				Prefabs.RegisterNewSurvivor(Ridley.characterPrefab, Ridley.displayPrefab, Color.grey, "RIDLEY");
 				Ridley.CreateHitboxes();
 				Ridley.CreateSkills();
 				Ridley.CreateSkins();
@@ -140,14 +145,14 @@ namespace Ridley.Modules.Survivors
 				skillDescriptionToken = str + "_RIDLEY_BODY_SECONDARY_GUN_DESCRIPTION",
 				skillIcon = Assets.mainAssetBundle.LoadAsset<Sprite>("texSecondaryIcon"),
 				activationState = new SerializableEntityStateType(typeof(ChargeFireballs)),
-				activationStateMachineName = "Body",
+				activationStateMachineName = "Mouth",
 				baseMaxStock = 1,
-				baseRechargeInterval = 4.5f,
+				baseRechargeInterval = 3f,
 				beginSkillCooldownOnSkillEnd = true,
 				canceledFromSprinting = false,
 				forceSprintDuringState = false,
 				fullRestockOnAssign = true,
-				interruptPriority = InterruptPriority.PrioritySkill,
+				interruptPriority = InterruptPriority.Any,
 				resetCooldownTimerOnUse = false,
 				isCombatSkill = true,
 				mustKeyPress = false,
@@ -155,10 +160,6 @@ namespace Ridley.Modules.Survivors
 				rechargeStock = 1,
 				requiredStock = 1,
 				stockToConsume = 1,
-				keywordTokens = new string[]
-				{
-					"KEYWORD_AGILE"
-				}
 			});
 			Skills.AddSecondarySkills(Ridley.characterPrefab, new SkillDef[]
 			{
@@ -197,10 +198,10 @@ namespace Ridley.Modules.Survivors
 				skillNameToken = str + "_RIDLEY_BODY_SPECIAL_BOMB_NAME",
 				skillDescriptionToken = str + "_RIDLEY_BODY_SPECIAL_BOMB_DESCRIPTION",
 				skillIcon = Assets.mainAssetBundle.LoadAsset<Sprite>("texSpecialIcon"),
-				activationState = new SerializableEntityStateType(typeof(Skewer)),
+				activationState = new SerializableEntityStateType(typeof(Skewer2)),
 				activationStateMachineName = "Body",
 				baseMaxStock = 1,
-				baseRechargeInterval = 9f,
+				baseRechargeInterval = 8f,
 				beginSkillCooldownOnSkillEnd = true,
 				canceledFromSprinting = false,
 				forceSprintDuringState = false,
@@ -2349,26 +2350,7 @@ namespace Ridley.Modules.Survivors
 					}
 				}
 			});
-			Ridley.itemDisplayRules.Add(new ItemDisplayRuleSet.KeyAssetRuleGroup
-			{
-				keyAsset = RoR2Content.Items.CooldownOnCrit,
-				displayRuleGroup = new DisplayRuleGroup
-				{
-					rules = new ItemDisplayRule[]
-					{
-						new ItemDisplayRule
-						{
-							ruleType = ItemDisplayRuleType.ParentedPrefab,
-							followerPrefab = ItemDisplays.LoadDisplay("DisplaySkull"),
-							childName = "Chest",
-							localPos = new Vector3(0f, 0.3997f, 0f),
-							localAngles = new Vector3(270f, 0f, 0f),
-							localScale = new Vector3(0.2789f, 0.2789f, 0.2789f),
-							limbMask = LimbFlags.None
-						}
-					}
-				}
-			});
+			
 			Ridley.itemDisplayRules.Add(new ItemDisplayRuleSet.KeyAssetRuleGroup
 			{
 				keyAsset = RoR2Content.Items.Phasing,
@@ -2719,26 +2701,7 @@ namespace Ridley.Modules.Survivors
 					}
 				}
 			});
-			Ridley.itemDisplayRules.Add(new ItemDisplayRuleSet.KeyAssetRuleGroup
-			{
-				keyAsset = RoR2Content.Items.Incubator,
-				displayRuleGroup = new DisplayRuleGroup
-				{
-					rules = new ItemDisplayRule[]
-					{
-						new ItemDisplayRule
-						{
-							ruleType = ItemDisplayRuleType.ParentedPrefab,
-							followerPrefab = ItemDisplays.LoadDisplay("DisplayAncestralIncubator"),
-							childName = "Chest",
-							localPos = new Vector3(0f, 0.3453f, 0f),
-							localAngles = new Vector3(353.0521f, 317.2421f, 69.6292f),
-							localScale = new Vector3(0.0528f, 0.0528f, 0.0528f),
-							limbMask = LimbFlags.None
-						}
-					}
-				}
-			});
+			
 			Ridley.itemDisplayRules.Add(new ItemDisplayRuleSet.KeyAssetRuleGroup
 			{
 				keyAsset = RoR2Content.Items.FireballsOnHit,

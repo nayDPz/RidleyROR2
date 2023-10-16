@@ -3,11 +3,14 @@ using EntityStates;
 using UnityEngine;
 using RoR2;
 using EntityStates;
-namespace Ridley.SkillStates.BaseStates
+namespace Ridley.SkillStates
 {
 	internal class SkeweredState : BaseState
 	{
-		public float duration = 2f;
+		public float skewerDuration = 2f;
+		public float pullDuration = 1f;
+		private float stopwatch;
+		public Vector3 destination;
 
 		private float wait = 0.075f;
 		public override void OnEnter()
@@ -48,8 +51,40 @@ namespace Ridley.SkillStates.BaseStates
 			{
 				base.characterMotor.velocity = Vector3.zero;
 			}
-			if (base.fixedAge >= this.duration)
+			if (base.fixedAge >= this.skewerDuration && base.fixedAge < this.skewerDuration + this.pullDuration)
 			{
+				this.stopwatch += Time.fixedDeltaTime;
+				float num = this.pullDuration - this.stopwatch;
+
+				Vector3 vector = this.destination - base.characterBody.coreTransform.position;
+				if(num > 0)
+                {
+					float num2 = vector.magnitude / num;
+					Vector3 normalized = vector.normalized;
+					float num3 = Mathf.Lerp(2f, 0f, this.stopwatch / this.pullDuration);
+					if (base.characterBody.isChampion)
+					{
+						num3 /= 2f;
+					}
+					num2 *= num3;
+					if (base.characterMotor)
+					{
+						if (base.GetComponent<KinematicCharacterController.KinematicCharacterMotor>())
+						{
+							base.GetComponent<KinematicCharacterController.KinematicCharacterMotor>().ForceUnground();
+						}
+						base.characterMotor.rootMotion += normalized * num2 * Time.fixedDeltaTime;
+						base.characterMotor.velocity.y = 0f;
+					}
+					else
+					{
+						base.transform.position += normalized * num2 * Time.fixedDeltaTime;
+					}
+				}
+							
+			}
+			if(base.fixedAge >= this.skewerDuration + this.pullDuration)
+            {
 				if (base.GetComponent<SetStateOnHurt>().canBeStunned)
 					this.outer.SetNextState(new StunState { stunDuration = 1f });
 				else

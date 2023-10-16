@@ -11,7 +11,7 @@ namespace Ridley.SkillStates
 	public class FireFireballs : BaseSkillState
 	{
 		public float charge;
-		public static float damageCoefficient = 3f;
+		public static float damageCoefficient = 2f;
 		public static float force = 200f;
 		private float duration = 0.5f;
 		private float fireInterval = 0.125f;
@@ -23,19 +23,12 @@ namespace Ridley.SkillStates
 		{
 			base.OnEnter();
 			this.duration /= this.attackSpeedStat;
-			this.numFireballs = (int)(this.charge / 0.33f) + 1;
+			this.numFireballs = (int)(this.charge / 0.5f) + 1;
 			this.fireInterval /= this.attackSpeedStat;
-			base.StartAimMode(this.fireInterval, false);
 			base.GetModelAnimator();
 			this.aimRay = base.GetAimRay();
-			if (base.isGrounded)
-			{
-				base.PlayAnimation("FullBody, Override", "NSpecShoot", "Slash.playbackRate", 1f);
-			}
-			else
-			{
-				base.PlayAnimation("FullBody, Override", "NSpecAirShoot", "Slash.playbackRate", 1f);
-			}
+			base.PlayAnimation("Head, Override", "NSpecShoot", "Slash.playbackRate", 1f);
+
 		}
 
 		private void Fire()
@@ -46,9 +39,9 @@ namespace Ridley.SkillStates
 			{
 				EffectManager.SimpleMuzzleFlash(FireFireball.effectPrefab, base.gameObject, "Mouth", false);
 			}
-			if (base.isAuthority)
-			{
-				Projectiles.ridleyFireballPrefab.GetComponent<ProjectileExplosion>().explosionEffect = GlobalEventManager.CommonAssets.igniteOnKillExplosionEffectPrefab;
+			Projectiles.ridleyFireballPrefab.GetComponent<ProjectileExplosion>().explosionEffect = GlobalEventManager.CommonAssets.igniteOnKillExplosionEffectPrefab;
+			if (Util.HasEffectiveAuthority(base.gameObject))
+			{			
 				ProjectileManager.instance.FireProjectile(Projectiles.ridleyFireballPrefab, this.aimRay.origin, Util.QuaternionSafeLookRotation(this.aimRay.direction), base.gameObject, this.damageStat * FireFireballs.damageCoefficient, FireFireballs.force, base.RollCrit(), DamageColorIndex.Default, null, -1f);
 			}
 		}
@@ -66,7 +59,7 @@ namespace Ridley.SkillStates
 				this.fireStopwatch = 0f;
 				this.Fire();
 			}
-			if (base.fixedAge >= this.duration && base.isAuthority)
+			if (base.fixedAge >= this.duration && Util.HasEffectiveAuthority(base.gameObject))
 			{
 				this.outer.SetNextStateToMain();
 			}

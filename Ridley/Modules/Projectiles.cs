@@ -30,7 +30,8 @@ namespace Ridley.Modules
 
             ProjectileImpactExplosion p = ridleyFireballPrefab.GetComponent<ProjectileImpactExplosion>();
             p.lifetime = 5f;
-            p.blastDamageCoefficient = 0.5f;
+            p.blastProcCoefficient = 0.5f;
+            p.blastDamageCoefficient = 1f;
             p.blastRadius = 12f;
             p.impactEffect = GlobalEventManager.CommonAssets.igniteOnKillExplosionEffectPrefab;
             p.explosionEffect = GlobalEventManager.CommonAssets.igniteOnKillExplosionEffectPrefab;

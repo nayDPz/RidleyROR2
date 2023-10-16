@@ -17,7 +17,6 @@ namespace Ridley.Modules
 
         internal static GameObject footDragEffect;
         internal static GameObject groundDragEffect;
-        internal static GameObject vitalPrefab;
         // particle effects
         internal static GameObject grabFireEffect;
         internal static GameObject ridleySwingEffect;
@@ -25,38 +24,9 @@ namespace Ridley.Modules
         internal static GameObject swordHitImpactEffect;
 
         internal static GameObject biteEffect;
-        internal static GameObject punchImpactEffect;
-
-        internal static GameObject fistBarrageEffect;
-
-        internal static GameObject bombExplosionEffect;
-        internal static GameObject bazookaExplosionEffect;
-        internal static GameObject bazookaMuzzleFlash;
-        internal static GameObject dustEffect;
-
-        internal static GameObject muzzleFlashEnergy;
-        internal static GameObject swordChargeEffect;
-        internal static GameObject swordChargeFinishEffect;
-        internal static GameObject minibossEffect;
-
-        internal static GameObject spearSwingEffect;
-
-        internal static GameObject nemSwordSwingEffect;
-        internal static GameObject nemSwordHeavySwingEffect;
-        internal static GameObject nemSwordHitImpactEffect;
-
-        internal static GameObject shotgunTracer;
-        internal static GameObject energyTracer;
-
-        // custom crosshair
-        internal static GameObject bazookaCrosshair;
-
-        // tracker
-        internal static GameObject trackerPrefab;
-
-        internal static GameObject exposeTrackerPrefab;
 
         // networked hit sounds
+        internal static NetworkSoundEventDef grabGroundSoundEvent;
         internal static NetworkSoundEventDef sword1HitSoundEvent;
         internal static NetworkSoundEventDef sword2HitSoundEvent;
         internal static NetworkSoundEventDef sword3HitSoundEvent;
@@ -65,7 +35,6 @@ namespace Ridley.Modules
         internal static NetworkSoundEventDef jab2HitSoundEvent;
         internal static NetworkSoundEventDef jab3HitSoundEvent;
         internal static NetworkSoundEventDef punchHitSoundEvent;
-        internal static NetworkSoundEventDef nemSwordHitSoundEvent;
 
         internal static List<NetworkSoundEventDef> networkSoundEventDefs = new List<NetworkSoundEventDef>();
 
@@ -85,13 +54,6 @@ namespace Ridley.Modules
                     mainAssetBundle = AssetBundle.LoadFromStream(assetStream);
                 }
             }
-
-            using (Stream manifestResourceStream2 = Assembly.GetExecutingAssembly().GetManifestResourceStream("Ridley.HenryBank.bnk"))
-            {
-                byte[] array = new byte[manifestResourceStream2.Length];
-                manifestResourceStream2.Read(array, 0, array.Length);
-                SoundAPI.SoundBanks.Add(array);
-            }
             using (Stream manifestResourceStream2 = Assembly.GetExecutingAssembly().GetManifestResourceStream("Ridley.RidleyBank.bnk"))
             {
                 byte[] array = new byte[manifestResourceStream2.Length];
@@ -99,7 +61,7 @@ namespace Ridley.Modules
                 SoundAPI.SoundBanks.Add(array);
             }
 
-
+            grabGroundSoundEvent = CreateNetworkSoundEventDef("GrabHitGround");
             sword1HitSoundEvent = CreateNetworkSoundEventDef("SwordHit1");
             sword2HitSoundEvent = CreateNetworkSoundEventDef("SwordHit2");
             sword3HitSoundEvent = CreateNetworkSoundEventDef("SwordHit3");
@@ -114,11 +76,12 @@ namespace Ridley.Modules
             {
                 GameObject.Destroy(b.GetComponent<ProjectileGhostController>());
 
-                var effect = b.AddComponent<EffectComponent>();
-                effect.applyScale = true;
-                effect.effectIndex = EffectIndex.Invalid;
-                effect.parentToReferencedTransform = true;
-                effect.positionAtReferencedTransform = true;
+                //var effect = b.AddComponent<EffectComponent>();
+                //effect.applyScale = true;
+                //effect.effectIndex = EffectIndex.Invalid;
+                //effect.parentToReferencedTransform = true;
+                //effect.positionAtReferencedTransform = true;
+
                 groundDragEffect = b;
             }
 
@@ -133,8 +96,6 @@ namespace Ridley.Modules
             f2.GetComponent<ParticleSystemRenderer>().material.shader = cloud;
             f2.AddComponent<Components.MaterialControllerComponents.HGControllerFinder>();
             f2.AddComponent<DetachParticleOnDestroyAndEndEmission>().particleSystem = f2.GetComponent<ParticleSystem>();
-
-            dustEffect = LoadEffect("HenryDustEffect");
 
             ridleySwingEffect = Assets.LoadEffect("RidleySwingEffect", true);
             swordHitImpactEffect = Assets.LoadEffect("ImpactHenrySlash");

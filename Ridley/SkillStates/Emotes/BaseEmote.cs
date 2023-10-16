@@ -31,7 +31,8 @@ namespace Ridley.SkillStates.Emotes
             this.animator.SetLayerWeight(animator.GetLayerIndex("AimPitch"), 0);
             this.animator.SetLayerWeight(animator.GetLayerIndex("AimYaw"), 0);
 
-           
+            if (this.animDuration == 0 && this.duration != 0) this.animDuration = this.duration;
+            
             base.PlayAnimation("FullBody, Override", this.animString, "Emote.playbackRate", this.animDuration);
 
             this.activePlayID = Util.PlaySound(soundString, base.gameObject);
@@ -98,7 +99,7 @@ namespace Ridley.SkillStates.Emotes
             }
 
             //emote cancels
-            if (base.isAuthority && base.characterMotor.isGrounded && !this.localUser.isUIFocused)
+            if (Util.HasEffectiveAuthority(base.gameObject) && base.characterMotor.isGrounded && !this.localUser.isUIFocused)
             {
                 if (Input.GetKeyDown(Modules.Config.emote1Keybind.Value))
                 {

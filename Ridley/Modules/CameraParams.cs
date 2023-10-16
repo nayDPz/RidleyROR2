@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Ridley.Modules
 {
-    internal static class CameraParams // from PaladinMod
+    internal static class CameraParams // yoinked from PaladinMod
     {
         internal static CharacterCameraParams defaultCameraParams;
 
@@ -22,11 +22,11 @@ namespace Ridley.Modules
             CharacterCameraParams newParams = ScriptableObject.CreateInstance<CharacterCameraParams>();
 
             newParams.name = name;
-            newParams.maxPitch = pitch;
-            newParams.minPitch = -pitch;
-            newParams.pivotVerticalOffset = pivotVerticalOffset;
-            newParams.standardLocalCameraPos = standardPosition;
-            newParams.wallCushion = wallCushion;
+            newParams.data.maxPitch = pitch;
+            newParams.data.minPitch = -pitch;
+            newParams.data.pivotVerticalOffset = pivotVerticalOffset;
+            newParams.data.idealLocalCameraPos = standardPosition;
+            newParams.data.wallCushion = wallCushion;
 
             return newParams;
         }

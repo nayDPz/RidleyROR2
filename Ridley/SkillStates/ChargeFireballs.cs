@@ -24,7 +24,7 @@ namespace Ridley.SkillStates
 		public string chargeSoundString;
 
 		[SerializeField]
-		public float baseDuration = 1f;
+		public float baseDuration = .67f;
 
 		[SerializeField]
 		public float minBloomRadius;
@@ -36,7 +36,7 @@ namespace Ridley.SkillStates
 		public GameObject crosshairOverridePrefab;
 
 		[SerializeField]
-		public float minChargeDuration = 0.4f;
+		public float minChargeDuration = 0.67f;
 
 		private GameObject defaultCrosshairPrefab;
 
@@ -50,7 +50,7 @@ namespace Ridley.SkillStates
 			if (this.childLocator)
 			{
 				Transform transform = this.childLocator.FindChild("Mouth") ?? base.characterBody.coreTransform;
-				if (transform && this.chargeEffectPrefab)
+				if (transform)
 				{
 					this.chargeEffectInstance = GameObject.Instantiate<GameObject>(ChargeFireball.chargeVfxPrefab, transform.position, transform.rotation);
 					this.chargeEffectInstance.transform.parent = transform;
@@ -68,26 +68,12 @@ namespace Ridley.SkillStates
 			}
 			this.PlayChargeAnimation();
 			this.loopSoundInstanceId = Util.PlayAttackSpeedSound("FireballCharge", base.gameObject, this.attackSpeedStat);
-			this.defaultCrosshairPrefab = base.characterBody.crosshairPrefab;
-			if (this.crosshairOverridePrefab)
-			{
-				base.characterBody.crosshairPrefab = this.crosshairOverridePrefab;
-			}
-			base.StartAimMode(this.duration + 2f, false);
 		}
 
 		public override void OnExit()
 		{
-			if (base.characterBody)
-			{
-				base.characterBody.crosshairPrefab = this.defaultCrosshairPrefab;
-			}
 			AkSoundEngine.StopPlayingID(this.loopSoundInstanceId);
-			if (!this.outer.destroying)
-			{
-				base.PlayAnimation("Gesture, Additive", "Empty");
-			}
-			base.PlayAnimation("FullBody, Overide", "BufferEmpty", "Slash.playbackRate", 1f);
+			base.PlayAnimation("Head, Overide", "BufferEmpty", "Slash.playbackRate", 1f);
 			EntityState.Destroy(this.chargeEffectInstance);
 			base.OnExit();
 		}
@@ -100,7 +86,7 @@ namespace Ridley.SkillStates
 		{
 			base.FixedUpdate();
 			float charge = this.CalcCharge();
-			if (base.isAuthority && ((!base.IsKeyDownAuthority() && base.fixedAge >= this.minChargeDuration) || base.fixedAge >= this.duration))
+			if (Util.HasEffectiveAuthority(base.gameObject) && ((!base.IsKeyDownAuthority() && base.fixedAge >= this.minChargeDuration) || base.fixedAge >= this.duration))
 			{
 				FireFireballs fireFireballs = new FireFireballs();
 				fireFireballs.charge = charge;
@@ -120,15 +106,8 @@ namespace Ridley.SkillStates
 
 		protected virtual void PlayChargeAnimation()
 		{
-			bool isGrounded = base.isGrounded;
-			if (isGrounded)
-			{
-				base.PlayAnimation("FullBody, Override", "NSpecStart", "Slash.playbackRate", 0.225f);
-			}
-			else
-			{
-				base.PlayAnimation("FullBody, Override", "NSpecAirStart", "Slash.playbackRate", 0.225f);
-			}
+			base.PlayAnimation("Head, Override", "NSpecStart", "Slash.playbackRate", 0.225f);
+
 		}
 		
 	}

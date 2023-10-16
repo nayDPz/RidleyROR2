@@ -56,7 +56,7 @@ namespace Ridley.SkillStates
 			}
 
 
-			if (base.isAuthority && base.characterMotor.isGrounded && !this.localUser.isUIFocused)
+			if (Util.HasEffectiveAuthority(base.gameObject) && base.characterMotor.isGrounded && !this.localUser.isUIFocused)
 			{
 				if (Input.GetKeyDown(Modules.Config.emote1Keybind.Value))
 				{

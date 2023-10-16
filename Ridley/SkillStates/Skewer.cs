@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using EntityStates;
 using KinematicCharacterController;
-using Ridley.SkillStates.BaseStates;
 using RoR2;
 using UnityEngine;
-
+using UnityEngine.Networking;
 namespace Ridley.SkillStates
 {
 	public class Skewer : BaseSkillState
@@ -32,7 +31,7 @@ namespace Ridley.SkillStates
 		private Animator animator;
 		private string muzzleString;
 		private static float antigravityStrength;
-		private List<HurtBox> hitHurtBoxes;
+		private List<HealthComponent> hitHealthComponents;
 		private Skewer.SubState subState;
 		private bool a;
 		private enum SubState
@@ -53,13 +52,9 @@ namespace Ridley.SkillStates
 			this.skewerTime /= this.attackSpeedStat;
 			this.duration = Skewer.baseDuration / this.attackSpeedStat;
 			this.fireTime = 0.4f * this.duration;
-			if(base.modelLocator)
-            {
-				//GetTailTransforms();
-            }
 			base.characterBody.SetAimTimer(2f);
 			base.characterDirection.forward = base.GetAimRay().direction;
-			this.hitHurtBoxes = new List<HurtBox>();
+			this.hitHealthComponents = new List<HealthComponent>();
 			this.animator = base.GetModelAnimator();
 			this.muzzleString = "Muzzle";
 			base.PlayAnimation("FullBody, Override", "DownSpecial", "Slash.playbackrate", this.duration);
@@ -75,17 +70,15 @@ namespace Ridley.SkillStates
 		{
 			if (!this.hasFired)
 			{
+				this.aimRay = base.GetAimRay();
+				this.pullPoint = aimRay.GetPoint(3f);
+				this.pullPoint.y = base.transform.position.y + 1f;
 				this.hasFired = true;
 				base.characterBody.AddSpreadBloom(1.5f);
 				EffectManager.SimpleMuzzleFlash(Skewer.muzzleEffectPrefab, base.gameObject, this.muzzleString, false);
-				if (base.isAuthority)
-				{
-					this.aimRay = base.GetAimRay();
-					this.pullPoint = aimRay.GetPoint(3f);
-					this.pullPoint.y = base.transform.position.y + 1f;
-					Vector3 direction = aimRay.direction;
-					//direction.y = Mathf.Clamp(aimRay.direction.y, -0.25f, 0.25f);
-					aimRay.direction = direction;
+				if (Util.HasEffectiveAuthority(base.gameObject))
+				{					
+					
 					base.AddRecoil(-1f * Skewer.recoil, -2f * Skewer.recoil, -0.5f * Skewer.recoil, 0.5f * Skewer.recoil);
 					BulletAttack bulletAttack = new BulletAttack
 					{
@@ -109,7 +102,7 @@ namespace Ridley.SkillStates
 						procCoefficient = Skewer.procCoefficient,
 						radius = 2f,
 						sniper = false,
-						stopperMask = LayerIndex.world.mask,
+						stopperMask = LayerIndex.world.collisionMask,
 						weapon = null,
 						tracerEffectPrefab = Skewer.tracerEffectPrefab,
 						spreadPitchScale = 0f,
@@ -117,80 +110,98 @@ namespace Ridley.SkillStates
 						queryTriggerInteraction = QueryTriggerInteraction.UseGlobal,
 						hitEffectPrefab = Skewer.muzzleEffectPrefab
 					};
-					bulletAttack.hitCallback = delegate (ref BulletAttack.BulletHit hitInfo)
+					bulletAttack.hitCallback = (BulletAttack bullet, ref BulletAttack.BulletHit hitInfo) =>
 					{
-						bool result = bulletAttack.DefaultHitCallback(ref hitInfo);
-						if(hitInfo.hitHurtBox && result)
-                        {
-							this.hitHurtBoxes.Add(hitInfo.hitHurtBox);
-							if (hitInfo.hitHurtBox.healthComponent && hitInfo.hitHurtBox.healthComponent.body)
-							{
-								EntityStateMachine component = hitInfo.hitHurtBox.healthComponent.body.GetComponent<EntityStateMachine>();
-								if (hitInfo.hitHurtBox.healthComponent.body.GetComponent<SetStateOnHurt>().canBeFrozen && component)
-								{
-									SkeweredState newNextState = new SkeweredState
-									{
-										duration = this.skewerTime
-									};
-									component.SetInterruptState(newNextState, InterruptPriority.Frozen);
-								}
-							}
+						bool result = BulletAttack.defaultHitCallback(bullet, ref hitInfo);
+						if (hitInfo.hitHurtBox)
+						{
 							this.OnHitEnemyAuthority();
 						}
-						
 						return result;
 					};
 					bulletAttack.Fire();
+
+					
+
+					
+				}
+												
+			}
+			if (NetworkServer.active)
+			{
+				RaycastHit[] raycastHits = Physics.SphereCastAll(aimRay.origin, 2f, aimRay.direction, Skewer.range, LayerIndex.CommonMasks.bullet, QueryTriggerInteraction.UseGlobal);
+				for (int i = 0; i < raycastHits.Length; i++)
+				{
+					if(raycastHits[i].collider)
+                    {
+						Collider c = raycastHits[i].collider;
+						if(c)
+                        {
+							HurtBox hurtBox = c.GetComponent<HurtBox>();
+							if (hurtBox)
+							{
+								HealthComponent healthComponent = hurtBox.healthComponent;								
+								if (healthComponent)
+								{
+									TeamComponent team = healthComponent.GetComponent<TeamComponent>();
+									bool enemy = team.teamIndex != base.teamComponent.teamIndex;
+									if (enemy)
+									{
+										if (!this.hitHealthComponents.Contains(healthComponent))
+										{
+											this.hitHealthComponents.Add(healthComponent);
+										}
+									}
+								}
+							}
+						}
+                    }
+					
+				}
+
+				//Debug.Log(this.hitHealthComponents.ToArray().ToString());
+				foreach (HealthComponent h in this.hitHealthComponents)
+				{
+					if (h && h.body)
+					{
+						EntityStateMachine component = h.body.GetComponent<EntityStateMachine>();
+						if (h.body.GetComponent<SetStateOnHurt>() && h.body.GetComponent<SetStateOnHurt>().canBeFrozen && component)
+						{
+							SkeweredState newNextState = new SkeweredState
+							{
+								skewerDuration = this.skewerTime,
+								pullDuration = this.pullTime,
+								destination = this.pullPoint,
+							};
+							component.SetInterruptState(newNextState, InterruptPriority.Death);
+						}
+					}
+				}
+
+				if (this.hitHealthComponents.Count > 0)
+                {
+					this.subState = Skewer.SubState.SkewerHit;
+					this.stopwatch = 0f;
+				}
+				else
+                {
+					Util.PlaySound("DSpecialSwing", base.gameObject);
+					this.subState = Skewer.SubState.Exit;
+					this.stopwatch = 0f;
 				}
 			}
 		}
 
 		private void OnHitEnemyAuthority()
 		{
+			base.PlayAnimation("FullBody, Override", "DownSpecialHit", "Slash.playbackrate", this.duration * 0.5f);
+			Util.PlaySound("DSpecialHit", base.gameObject);
+			this.subState = Skewer.SubState.SkewerHit;
+			this.stopwatch = 0f;
 			base.characterMotor.velocity = Vector3.zero;
 			base.AddRecoil(-1f * this.attackRecoil / 2, -2f * this.attackRecoil / 2, -0.5f * this.attackRecoil / 2, 0.5f * this.attackRecoil / 2);
 		}
 
-
-		private void GetTailTransforms()
-        {
-			if (base.modelLocator)
-			{
-				Transform modelTransform = modelLocator.modelTransform;
-				if (modelTransform) // lol
-				{
-					//Transform tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/");
-					//if(tail) tailTransforms.Add(tail);
-					Transform tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/Tail4");
-					if (tail) tailTransforms.Add(tail);
-					tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/Tail4/Tail5");
-					if (tail) tailTransforms.Add(tail);
-					tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/Tail4/Tail5/Tail6");
-					if (tail) tailTransforms.Add(tail);
-					tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/Tail4/Tail5/Tail6/Tail7");
-					if (tail) tailTransforms.Add(tail);
-					tail = modelTransform.Find("model-armature/Trans/Rot/Hip/Tail/Tail1/Tail2/Tail3/Tail4/Tail5/Tail6/Tail7/Tail8");
-					if (tail) tailTransforms.Add(tail);
-
-				}
-			}
-		}
-        public override void Update()
-        {
-            base.Update();
-			//if (this.subState == Skewer.SubState.SkewerHit)
-				//SetTailPosition();
-        }
-        private void SetTailPosition()
-        {
-			Vector3 vector = this.aimRay.direction * Skewer.range;
-			float distanceBetweenBones = vector.magnitude / tailTransforms.Count;
-			for(int i = 0; i < tailTransforms.Count; i++)
-            {
-				if(tailTransforms[i])
-					tailTransforms[i].position = this.aimRay.GetPoint(distanceBetweenBones * (i + 1));
-            }
-		}
 
 		public override void FixedUpdate()
 		{
@@ -204,23 +215,7 @@ namespace Ridley.SkillStates
 				}
 				if (this.hasFired)
 				{
-					if (this.hitHurtBoxes.Count > 0)
-					{
-						base.PlayAnimation("FullBody, Override", "DownSpecialHit", "Slash.playbackrate", this.duration * 0.5f);
-						Util.PlaySound("DSpecialHit", base.gameObject);
-						this.subState = Skewer.SubState.SkewerHit;
-						this.stopwatch = 0f;
-					}
-					else
-					{
-						if (!this.a)
-						{
-							Util.PlaySound("DSpecialSwing", base.gameObject);
-						}
-						this.a = true;
-						this.subState = Skewer.SubState.Exit;
-						this.stopwatch = 0f;
-					}
+
 				}
 			}
 			else
@@ -229,21 +224,6 @@ namespace Ridley.SkillStates
 				{
 					base.GetModelAnimator().SetFloat("Slash.playbackRate", 0f);
 					base.characterMotor.velocity.y = 0f;
-					foreach (HurtBox hurtBox in this.hitHurtBoxes)
-					{
-						if (hurtBox)
-						{
-							HealthComponent healthComponent = hurtBox.healthComponent;
-							if (healthComponent && healthComponent.body)
-							{
-								CharacterBody body = healthComponent.body;
-								if (body.characterMotor)
-								{
-									body.characterMotor.velocity = Vector3.zero;
-								}
-							}
-						}
-					}
 					if (this.stopwatch >= this.skewerTime)
 					{
 						base.AddRecoil(-1f * this.attackRecoil, -2f * this.attackRecoil, -0.5f * this.attackRecoil, 0.5f * this.attackRecoil);
@@ -257,43 +237,40 @@ namespace Ridley.SkillStates
 				{
 					if (this.subState == Skewer.SubState.Pull)
 					{
-						foreach (HurtBox hurtBox in this.hitHurtBoxes)
+						/*
+						foreach (HealthComponent healthComponent in this.hitHealthComponents)
 						{
-							if (hurtBox)
+							if (healthComponent && healthComponent.body)
 							{
-								HealthComponent healthComponent2 = hurtBox.healthComponent;
-								if (healthComponent2 && healthComponent2.body)
+								if (this.stopwatch < this.pullTime)
 								{
-									if (this.stopwatch < this.pullTime)
+									CharacterBody body = healthComponent.body;
+									float num = this.pullTime - this.stopwatch;
+									Vector3 vector = this.pullPoint - body.coreTransform.position;
+									float num2 = vector.magnitude / num;
+									Vector3 normalized = vector.normalized;
+									float num3 = Mathf.Lerp(2f, 0f, this.stopwatch / this.pullTime);
+									if (body.isChampion)
 									{
-										CharacterBody body = healthComponent2.body;
-										float num = this.pullTime - this.stopwatch;
-										Vector3 vector = this.pullPoint - body.coreTransform.position;
-										float num2 = vector.magnitude / num;
-										Vector3 normalized = vector.normalized;
-										float num3 = Mathf.Lerp(2f, 0f, this.stopwatch / this.pullTime);
-										if (body.isChampion)
+										num3 /= 2f;
+									}
+									num2 *= num3;
+									if (body.characterMotor)
+									{
+										if (body.gameObject.GetComponent<KinematicCharacterMotor>())
 										{
-											num3 /= 2f;
+											body.gameObject.GetComponent<KinematicCharacterMotor>().ForceUnground();
 										}
-										num2 *= num3;
-										if (body.characterMotor)
-										{
-											if (body.gameObject.GetComponent<KinematicCharacterMotor>())
-											{
-												body.gameObject.GetComponent<KinematicCharacterMotor>().ForceUnground();
-											}
-											body.characterMotor.rootMotion += normalized * num2 * Time.fixedDeltaTime;
-											body.characterMotor.velocity.y = 0f;
-										}
-										else
-										{
-											body.transform.position += normalized * num2 * Time.fixedDeltaTime;
-										}
+										body.characterMotor.rootMotion += normalized * num2 * Time.fixedDeltaTime;
+										body.characterMotor.velocity.y = 0f;
+									}
+									else
+									{
+										body.transform.position += normalized * num2 * Time.fixedDeltaTime;
 									}
 								}
-							}
-						}
+							}						
+						}*/
 						base.characterMotor.velocity.y = 0f;
 						if (this.stopwatch >= this.pullTime + this.skewerExitTime)
 						{

@@ -59,7 +59,7 @@ namespace Ridley.Modules
             component.passiveSkill.enabled = true;
             component.passiveSkill.skillNameToken = "NDP_RIDLEY_BODY_PASSIVE_NAME";
             component.passiveSkill.skillDescriptionToken = "NDP_RIDLEY_BODY_PASSIVE_DESCRIPTION";
-            component.passiveSkill.icon = Assets.mainAssetBundle.LoadAsset<Sprite>("texBazookaOutIcon");
+            component.passiveSkill.icon = Assets.mainAssetBundle.LoadAsset<Sprite>("texPassiveIcon");
         }
         internal static void AddPrimarySkill(GameObject targetPrefab, SkillDef skillDef)
         {
