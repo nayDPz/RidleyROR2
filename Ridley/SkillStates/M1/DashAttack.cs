@@ -8,6 +8,8 @@ namespace Ridley.SkillStates
 {
 	public class DashAttack : BaseM1
 	{
+		private bool hasGrantedBuff = false;
+
 		public override void OnEnter()
 		{
 			this.baseDuration = 0.875f;
@@ -85,6 +87,17 @@ namespace Ridley.SkillStates
 				force = f / 200f;
 				launchVector *= force;
 				body.rigidbody.AddForce(launchVector, ForceMode.Impulse);
+			}
+		}
+
+		public override void OnHitEnemyAuthority(List<HurtBox> list)
+		{
+			base.OnHitEnemyAuthority(list);
+
+			if (!hasGrantedBuff)
+			{
+				hasGrantedBuff = true;
+				characterBody.AddTimedBuffAuthority(RoR2Content.Buffs.CrocoRegen.buffIndex, 0.5f);
 			}
 		}
 	}
