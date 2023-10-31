@@ -3,10 +3,14 @@ using EntityStates.Merc;
 using Ridley.Modules;
 using UnityEngine;
 using RoR2;
+using System.Collections.Generic;
+
 namespace Ridley.SkillStates
 {
 	public class Jab3 : BaseM1
 	{
+		private bool hasGrantedBuff = false;
+
 		public override void OnEnter()
 		{
 			this.anim = 1.2f;
@@ -92,5 +96,16 @@ namespace Ridley.SkillStates
 			};
 			//body.healthComponent.TakeDamageForce(info, true, true);
 		}
-	}
+
+        public override void OnHitEnemyAuthority(List<HurtBox> list)
+        {
+            base.OnHitEnemyAuthority(list);
+
+			if (!hasGrantedBuff)
+            {
+				hasGrantedBuff = true;
+				characterBody.AddTimedBuffAuthority(RoR2Content.Buffs.CrocoRegen.buffIndex, 0.5f);
+            }
+        }
+    }
 }
