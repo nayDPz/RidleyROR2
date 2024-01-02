@@ -26,18 +26,41 @@ namespace Ridley.SkillStates
 			this.modelLocator = base.GetComponent<ModelLocator>();
 			if (this.modelLocator)
 			{
-				Transform transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/HurtBox");
+				// greater wisp
+				/*Transform transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/HurtBox");
 				if (transform)
 				{
 					this.extraLayer = transform.gameObject.layer;
 					transform.gameObject.layer = LayerIndex.noCollision.intVal;
-				}
-				transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/ROOT/Mask/StandableSurfacePosition/StandableSurface");
+				}*/
+				// this is what caused greater wisps to not take damage from the impact
+
+				Transform transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/ROOT/Mask/StandableSurfacePosition/StandableSurface");
 				if (transform)
 				{
 					this.extraLayer2 = transform.gameObject.layer;
 					transform.gameObject.layer = LayerIndex.noCollision.intVal;
 				}
+
+				// archaic wisp
+				transform = base.transform.Find("Model Base/mdlArchWisp/ArchWispArmature/ROOT/StandableSurfacePosition/StandableSurface");
+				if (transform)
+				{
+					this.extraLayer2 = transform.gameObject.layer;
+					transform.gameObject.layer = LayerIndex.noCollision.intVal;
+				}
+
+				// lunar wisp
+				/*if (this.gameObject.name == "LunarWispBody(Clone)")
+				{
+					transform = this.GetComponent<ModelLocator>().modelTransform.Find("StandableSurface/StandableSurface");
+					if (transform)
+					{
+						this.extraLayer2 = transform.gameObject.layer;
+						transform.gameObject.layer = LayerIndex.noCollision.intVal;
+					}
+				}*/
+				// ridley seems to work fine grabbing these but ravager had issues so i'll leave this here just in case
 			}
 			base.gameObject.layer = LayerIndex.noCollision.intVal;
 			if (this.direction)
@@ -103,16 +126,29 @@ namespace Ridley.SkillStates
             {
 				if (this.modelLocator)
 				{
-					Transform transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/HurtBox");
-					if (transform)
-					{
-						transform.gameObject.layer = this.extraLayer;
-					}
-					transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/ROOT/Mask/StandableSurfacePosition/StandableSurface");
+					Transform transform = base.transform.Find("Model Base/mdlGreaterWisp/GreaterWispArmature/ROOT/Mask/StandableSurfacePosition/StandableSurface");
 					if (transform)
 					{
 						transform.gameObject.layer = this.extraLayer2;
 					}
+
+					// archaic wisp
+					transform = base.transform.Find("Model Base/mdlArchWisp/ArchWispArmature/ROOT/StandableSurfacePosition/StandableSurface");
+					if (transform)
+					{
+						transform.gameObject.layer = this.extraLayer2;
+					}
+
+					// lunar wisp
+					/*if (this.gameObject.name == "LunarWispBody(Clone)")
+					{
+						transform = this.GetComponent<ModelLocator>().modelTransform.Find("StandableSurface/StandableSurface");
+						if (transform)
+						{
+							transform.gameObject.layer = this.extraLayer2;
+						}
+					}*/
+					// see above comment
 				}
 				base.gameObject.layer = LayerIndex.defaultLayer.intVal;
 			}
