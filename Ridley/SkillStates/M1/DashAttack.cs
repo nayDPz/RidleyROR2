@@ -57,6 +57,13 @@ namespace Ridley.SkillStates
 				}
 
 			}
+
+			if (!hasGrantedBuff)
+			{
+				hasGrantedBuff = true;
+				characterBody.AddTimedBuffAuthority(RoR2Content.Buffs.CrocoRegen.buffIndex, 0.5f);
+			}
+
 			base.OnHitEnemyAuthority(list);
 		}
 
@@ -87,17 +94,6 @@ namespace Ridley.SkillStates
 				force = f / 200f;
 				launchVector *= force;
 				body.rigidbody.AddForce(launchVector, ForceMode.Impulse);
-			}
-		}
-
-		public override void OnHitEnemyAuthority(List<HurtBox> list)
-		{
-			base.OnHitEnemyAuthority(list);
-
-			if (!hasGrantedBuff)
-			{
-				hasGrantedBuff = true;
-				characterBody.AddTimedBuffAuthority(RoR2Content.Buffs.CrocoRegen.buffIndex, 0.5f);
 			}
 		}
 	}
